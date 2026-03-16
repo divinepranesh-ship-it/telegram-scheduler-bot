@@ -1,9 +1,9 @@
+import asyncio
 import logging
 from datetime import datetime
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 TOKEN = "8783119872:AAEhWqeQi-WBeNMq3WexW7rP1HmvFXwABow"
@@ -16,38 +16,39 @@ jobs = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 Scheduler Bot\n\n"
+        "🤖 Telegram Scheduler Bot\n\n"
         "/schedule YYYY-MM-DD HH:MM message\n"
         "/list\n"
-        "/cancel job_id"
+        "/cancel jobid"
     )
 
 
-async def send_message(context, chat_id, message):
-    await context.bot.send_message(chat_id=chat_id, text=message)
+async def send_scheduled(context, chat_id, text):
+    await context.bot.send_message(chat_id=chat_id, text=text)
 
 
 async def schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     try:
         date = context.args[0]
         time = context.args[1]
         message = " ".join(context.args[2:])
 
-        schedule_time = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+        run_time = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
         chat_id = update.effective_chat.id
 
         job = scheduler.add_job(
-            send_message,
+            send_scheduled,
             "date",
-            run_date=schedule_time,
-            args=[context, chat_id, message],
+            run_date=run_time,
+            args=[context, chat_id, message]
         )
 
         jobs[job.id] = job
 
-        await update.message.reply_text(f"✅ Scheduled\nJob ID: {job.id}")
+        await update.message.reply_text(f"✅ Scheduled\nID: {job.id}")
 
-    except Exception as e:
+    except:
         await update.message.reply_text(
             "Usage:\n/schedule 2026-03-20 18:30 Hello"
         )
@@ -59,12 +60,12 @@ async def list_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No scheduled posts")
         return
 
-    text = "📅 Scheduled:\n"
+    msg = "📅 Scheduled Jobs:\n"
 
     for job_id, job in jobs.items():
-        text += f"\n{job_id} - {job.next_run_time}"
+        msg += f"\n{job_id} → {job.next_run_time}"
 
-    await update.message.reply_text(text)
+    await update.message.reply_text(msg)
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -74,7 +75,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if job_id in jobs:
         jobs[job_id].remove()
         del jobs[job_id]
-        await update.message.reply_text("Cancelled")
+
+        await update.message.reply_text("❌ Job cancelled")
     else:
         await update.message.reply_text("Job not found")
 
@@ -90,10 +92,10 @@ async def main():
 
     scheduler.start()
 
-    print("Bot Running...")
+    print("Bot started")
 
     await app.run_polling()
 
 
-import asyncio
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
